@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Client struct {
@@ -16,20 +18,14 @@ type transferring struct {
 	Name string `json:"name"`
 }
 
-type responseStats struct {
+type statsResponse struct {
 	Transferring []*transferring `json:"transferring"`
 	Error        string          `json:"error"`
 }
 
 type bwlimitResponse struct {
-	BytesPerSecond int `json:"bytesPerSecond"`
-	//Rate string
-	Error string `json:"error"`
-}
-
-type bwlimitRequest struct {
-	//BytesPerSecond int `json:"bytesPerSecond"`
-	Rate string
+	BytesPerSecond int    `json:"bytesPerSecond"`
+	Error          string `json:"error"`
 }
 
 func (cl *Client) GetActiveTransferCount() (int, error) {
@@ -37,7 +33,7 @@ func (cl *Client) GetActiveTransferCount() (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	var stats responseStats
+	var stats statsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
 		return -1, err
 	}
@@ -63,6 +59,20 @@ func (cl *Client) GetLimit() (int, error) {
 }
 
 func (cl *Client) SetLimit(bytesPerSecond int) error {
+
+	old, err := cl.GetLimit()
+	if err != nil {
+		return err
+	}
+	delta := (bytesPerSecond - old) / 1024
+	if delta < 0 {
+		delta *= -1
+	}
+	if delta < 50 {
+		log.Infof("no adjust: trivial change")
+		return nil
+	}
+
 	v := url.Values{}
 	// NOTE: for some reason the API only seems to accept human readable parameters, so we convert to KiB/s
 	v.Set("rate", fmt.Sprintf("%dK", bytesPerSecond/1024))
@@ -78,8 +88,8 @@ func (cl *Client) SetLimit(bytesPerSecond int) error {
 	if stats.Error != "" {
 		return fmt.Errorf("rclone API error: %s", stats.Error)
 	}
-	if stats.BytesPerSecond != bytesPerSecond {
-		return fmt.Errorf("rclone failed to accept new bwlimit. got %d, want %d", stats.BytesPerSecond, bytesPerSecond)
-	}
+	//if stats.BytesPerSecond != bytesPerSecond {
+	//	return fmt.Errorf("rclone failed to accept new bwlimit. got %d, want %d", stats.BytesPerSecond, bytesPerSecond)
+	//}
 	return nil
 }
