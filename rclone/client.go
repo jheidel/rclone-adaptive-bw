@@ -28,6 +28,11 @@ type bwlimitResponse struct {
 	Error          string `json:"error"`
 }
 
+func (cl *Client) IsUp() bool {
+  _, err := cl.GetLimit()
+  return err == nil
+}
+
 func (cl *Client) GetActiveTransferCount() (int, error) {
 	resp, err := http.Post(cl.Address+"/core/stats", "application/json", bytes.NewBufferString("{}"))
 	if err != nil {

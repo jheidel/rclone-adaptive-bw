@@ -32,6 +32,13 @@ func main() {
 		Address: *rcloneRc,
 	}
 
+  for !rc.IsUp() {
+    log.Infof("Waiting for rclone to start...")
+    time.Sleep(5 * time.Second)
+  }
+  log.Infof("Rclone is now running")
+
+
 	count, err := rc.GetActiveTransferCount()
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -59,7 +66,7 @@ func main() {
 
 	ctrl := &pid.Controller{
 		Config: pid.ControllerConfig{
-			ProportionalGain: 0.25,
+			ProportionalGain: 0.15,  // Was 0.25
 			IntegralGain:     0.0,
 			DerivativeGain:   0.0,
 		},
@@ -83,6 +90,7 @@ func main() {
 			log.Fatalf("%v", err)
 		}
 		if txc == 0 {
+      log.Infof("No transfers active, waiting...")
 			p.Wipe()
 			continue
 		}
@@ -141,8 +149,8 @@ func main() {
 
 		target += oc
 
-		lowerBound := 350 * 1024
-		upperBound := 5 * 1024 * 1024
+		lowerBound := 250 * 1024
+		upperBound := 2100 * 1024
 		if target < lowerBound {
 			target = lowerBound
 		}
